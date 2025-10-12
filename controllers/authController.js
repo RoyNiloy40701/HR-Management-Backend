@@ -2,7 +2,7 @@ import jwt from "jsonwebtoken";
 import User from "../models/User.js";
 import bcrypt from "bcryptjs";
 import nodemailer from "nodemailer";
-const otpStore = [];
+const otpStore = {};
 
 const transporter = nodemailer.createTransport({
 	service: "gmail",
@@ -24,14 +24,30 @@ export const login = async (req, res) => {
 		const match = await bcrypt.compare(password, user.password);
 		if (!match) return res.status(400).json({ message: "Invalid credentials" });
 
+		const existingOTP = otpStore[user._id];
+		if (
+			existingOTP &&
+			Date.now() - existingOTP.createdAt < 24 * 60 * 60 * 1000
+		) {
+			return res.status(400).json({
+				userId: user._id,
+				message:
+					"An OTP was already sent. Please wait before requesting a new one.",
+			});
+		}
+
 		const otp = Math.floor(100000 + Math.random() * 900000).toString();
-		otpStore[user._id] = otp;
+		otpStore[user._id] = { otp, createdAt: Date.now() };
+
+		setTimeout(() => {
+			delete otpStore[user._id];
+		}, 24 * 60 * 60 * 1000);
 
 		await transporter.sendMail({
 			from: process.env.EMAIL_USER,
 			to: user.email,
 			subject: "Your Login OTP",
-			text: `Your OTP is: ${otp}. It is valid for 5 minutes.`,
+			text: `Your OTP is: ${otp}. It is valid for 10 minutes.`,
 		});
 		res.status(200).json({
 			message: "OTP sent to email",
@@ -46,10 +62,14 @@ export const verifyOTP = async (req, res) => {
 	try {
 		const { userId, otp } = req.body;
 
-		if (!otpStore[userId] || otpStore[userId] !== otp)
-			return res.status(400).json({ message: "Invalid or expired OTP" });
+		const stored = otpStore[userId];
+		if (!stored)
+			return res.status(400).json({ message: "OTP expired or not found" });
 
-		delete otpStore[userId];
+		if (stored.otp !== otp)
+			return res.status(400).json({ message: "Invalid OTP" });
+
+		// delete otpStore[userId];
 
 		const user = await User.findById(userId).populate({
 			path: "role",
