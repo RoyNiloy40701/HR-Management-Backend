@@ -8,6 +8,7 @@ import departmentRoutes from "./routes/departmentRoutes.js";
 import authRoutes from "./routes/authRoutes.js";
 import roleRoutes from "./routes/roleRoutes.js";
 import userRoutes from "./routes/userRoutes.js";
+import permissionRoutes from "./routes/permissionRoutes.js";
 
 dotenv.config();
 connectDataBase();
@@ -21,8 +22,7 @@ app.use("/api/auth", authRoutes);
 app.use("/api/role", roleRoutes);
 app.use("/api/user", userRoutes);
 app.use("/api/employee", employeeRoutes);
-app.use("/api/department", departmentRoutes);
-
-app.get("/", (req, res) => res.send("HR Management API Running ✅"));
+app.use("/api/departments", departmentRoutes);
+app.use("/api/permission", permissionRoutes);
 
 export default app;

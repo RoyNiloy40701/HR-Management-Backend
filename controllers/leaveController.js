@@ -15,7 +15,7 @@ export const getAllLeave = async (req, res) => {
 		if (leave.length === 0) {
 			return res.status(404).json({ message: "No Leave Application found" });
 		}
-		res.status(200), json({ data: leave });
+		res.status(200).json(leave);
 	} catch (error) {
 		res.status(500).json({ message: error.message });
 	}
@@ -29,7 +29,7 @@ export const updateLeave = async (req, res) => {
 		if (!leave) {
 			return res.status(404).json({ message: "No Leave Application found" });
 		}
-		res.status(200), json({ data: leave });
+		res.status(200).json(leave);
 	} catch (error) {
 		res.status(500).json({ message: error.message });
 	}
@@ -43,7 +43,19 @@ export const deleteLeave = async (req, res) => {
 				.status(404)
 				.json({ message: "Leave Application delete Successfully" });
 		}
-		res.status(200), json({ data: leave });
+		res.status(200).json(leave);
+	} catch (error) {
+		res.status(500).json({ message: error.message });
+	}
+};
+
+export const getLeaveByID = async (req, res) => {
+	try {
+		const leave = await Leave.findById(req.params.id).populate("employee");
+		if (!leave) {
+			return res.status(404).json({ message: "No leave Application found" });
+		}
+		res.status(200).json(leave);
 	} catch (error) {
 		res.status(500).json({ message: error.message });
 	}
