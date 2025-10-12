@@ -33,15 +33,6 @@ export const login = async (req, res) => {
 			subject: "Your Login OTP",
 			text: `Your OTP is: ${otp}. It is valid for 5 minutes.`,
 		});
-
-		// const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, {
-		// 	expiresIn: 3600,
-		// });
-		// res.status(200).json({
-		// 	message: "Login successful",
-		// 	user: user,
-		// 	token,
-		// });
 		res.status(200).json({
 			message: "OTP sent to email",
 			userId: user._id,
