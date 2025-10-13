@@ -25,33 +25,37 @@ export const login = async (req, res) => {
 		if (!match) return res.status(400).json({ message: "Invalid credentials" });
 
 		const existingOTP = otpStore[user._id];
+		const timer = 2 * 60 * 1000;
+
 		if (
 			existingOTP &&
-			Date.now() - existingOTP.createdAt < 24 * 60 * 60 * 1000
+			Date.now() - existingOTP.createdAt < timer &&
+			existingOTP.verified
 		) {
-			return res.status(400).json({
+			return res.status(200).json({
 				userId: user._id,
-				message:
-					"An OTP was already sent. Please wait before requesting a new one.",
+				existingOTP: existingOTP,
+				message: "An OTP was already sent.",
 			});
 		}
 
 		const otp = Math.floor(100000 + Math.random() * 900000).toString();
-		otpStore[user._id] = { otp, createdAt: Date.now() };
+		otpStore[user._id] = { otp, createdAt: Date.now(), verified: false };
 
 		setTimeout(() => {
 			delete otpStore[user._id];
-		}, 24 * 60 * 60 * 1000);
+		}, timer);
 
 		await transporter.sendMail({
 			from: process.env.EMAIL_USER,
 			to: user.email,
 			subject: "Your Login OTP",
-			text: `Your OTP is: ${otp}. It is valid for 10 minutes.`,
+			text: `Your OTP is: ${otp}. It is valid for ${timer / 60000} minutes.`,
 		});
 		res.status(200).json({
 			message: "OTP sent to email",
 			userId: user._id,
+			timer: timer,
 		});
 	} catch (error) {
 		res.status(500).json({ message: error.message });
@@ -69,8 +73,7 @@ export const verifyOTP = async (req, res) => {
 		if (stored.otp !== otp)
 			return res.status(400).json({ message: "Invalid OTP" });
 
-		// delete otpStore[userId];
-
+		stored.verified = true;
 		const user = await User.findById(userId).populate({
 			path: "role",
 			populate: { path: "permissions" },
