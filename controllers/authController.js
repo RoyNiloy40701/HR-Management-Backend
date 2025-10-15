@@ -2,15 +2,18 @@ import jwt from "jsonwebtoken";
 import User from "../models/User.js";
 import bcrypt from "bcryptjs";
 import nodemailer from "nodemailer";
+import { Resend } from "resend";
 const otpStore = {};
 
-const transporter = nodemailer.createTransport({
-	service: "gmail",
-	auth: {
-		user: "niloyroyaiub@gmail.com",
-		pass: "jvfgwavvsetdghvj",
-	},
-});
+// const transporter = nodemailer.createTransport({
+// 	service: "gmail",
+// 	auth: {
+// 		user: "niloyroyaiub@gmail.com",
+// 		pass: "jvfgwavvsetdghvj",
+// 	},
+// });
+
+const resend = new Resend(process.env.RESEND_API_KEY);
 
 export const login = async (req, res) => {
 	try {
@@ -43,11 +46,20 @@ export const login = async (req, res) => {
 		otpStore[user._id] = { otp, createdAt: Date.now(), verified: false };
 
 		setTimeout(() => {
-			delete otpStore[user._id];
+			if (otpStore[user._id] && !otpStore[user._id].verified) {
+				delete otpStore[user._id];
+			}
 		}, timer);
 
-		await transporter.sendMail({
-			from: process.env.EMAIL_USER,
+		// await transporter.sendMail({
+		// 	from: process.env.EMAIL_USER,
+		// 	to: user.email,
+		// 	subject: "Your Login OTP",
+		// 	text: `Your OTP is: ${otp}. It is valid for ${timer / 60000} minutes.`,
+		// });
+
+		await resend.emails.send({
+			from: "Your App <no-reply@resend.dev>",
 			to: user.email,
 			subject: "Your Login OTP",
 			text: `Your OTP is: ${otp}. It is valid for ${timer / 60000} minutes.`,
@@ -74,6 +86,11 @@ export const verifyOTP = async (req, res) => {
 			return res.status(400).json({ message: "Invalid OTP" });
 
 		stored.verified = true;
+
+		setTimeout(() => {
+			delete otpStore[userId];
+		}, 5 * 60 * 1000);
+
 		const user = await User.findById(userId).populate({
 			path: "role",
 			populate: { path: "permissions" },
